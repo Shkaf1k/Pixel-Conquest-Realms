@@ -3,20 +3,63 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hearts of Pixels - HoI4 Style</title>
+    <title>Hearts of Pixels: Real-Time Multiplayer</title>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
         body {
             background-color: #121619;
             color: #d1d5db;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            display: flex;
-            flex-direction: column;
             height: 100vh;
             overflow: hidden;
+            display: flex;
+            flex-direction: column;
         }
 
-        /* Topbar (верхняя панель HoI4) */
+        /* ЭКРАН ЛОББИ */
+        #lobby-screen {
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background: #0f1318;
+            z-index: 999;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .lobby-card {
+            background: #181f26;
+            border: 2px solid #374151;
+            padding: 25px;
+            border-radius: 8px;
+            width: 380px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            box-shadow: 0 0 30px rgba(0,0,0,0.8);
+        }
+        .lobby-card h2 { color: #f59e0b; text-align: center; font-size: 20px; }
+        .input-group { display: flex; flex-direction: column; gap: 5px; font-size: 13px; }
+        .input-group input, .input-group select {
+            background: #0f1318;
+            border: 1px solid #4b5563;
+            color: white;
+            padding: 8px;
+            border-radius: 4px;
+        }
+        .btn {
+            background: linear-gradient(180deg, #2563eb 0%, #1d4ed8 100%);
+            border: 1px solid #3b82f6;
+            color: white;
+            padding: 10px;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        .btn:hover { background: #3b82f6; }
+        .btn-green { background: linear-gradient(180deg, #059669 0%, #047857 100%); border-color: #10b981; }
+
+        /* ИГРОВОЙ ИНТЕРФЕЙС */
         #topbar {
             height: 40px;
             background: linear-gradient(180deg, #2a323d 0%, #1a2027 100%);
@@ -31,14 +74,7 @@
         .stats { display: flex; gap: 15px; }
         .stat-item { display: flex; align-items: center; gap: 5px; background: #0f1318; padding: 4px 8px; border-radius: 3px; border: 1px solid #374151; }
 
-        /* Основной контейнер */
-        #main-container {
-            display: flex;
-            flex: 1;
-            position: relative;
-        }
-
-        /* Sidebar (Левая панель генерала/дивизии) */
+        #main-container { display: flex; flex: 1; position: relative; }
         #sidebar {
             width: 250px;
             background: #181f26;
@@ -48,91 +84,71 @@
             flex-direction: column;
             gap: 15px;
         }
-        .panel-box {
-            background: #0f1318;
-            border: 1px solid #374151;
-            padding: 10px;
-            border-radius: 4px;
-        }
+        .panel-box { background: #0f1318; border: 1px solid #374151; padding: 10px; border-radius: 4px; }
         .panel-title { color: #f59e0b; font-size: 12px; text-transform: uppercase; margin-bottom: 5px; }
 
-        /* Карта */
-        #map-container {
-            flex: 1;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            background: #0b0e11;
-            position: relative;
-        }
-        canvas {
-            border: 2px solid #374151;
-            box-shadow: 0 0 25px rgba(0,0,0,0.8);
-            cursor: pointer;
-        }
-
-        /* Кнопка хода */
-        .btn-turn {
-            background: linear-gradient(180deg, #059669 0%, #047857 100%);
-            border: 1px solid #10b981;
-            color: white;
-            padding: 8px 16px;
-            font-weight: bold;
-            cursor: pointer;
-            border-radius: 3px;
-            text-shadow: 1px 1px 2px #000;
-        }
-        .btn-turn:hover { background: #10b981; }
-
-        /* Иконки дивизий */
-        .badge {
-            display: inline-block;
-            padding: 2px 6px;
-            font-size: 10px;
-            border-radius: 2px;
-            font-weight: bold;
-        }
-        .badge-blue { background: #1d4ed8; color: white; }
-        .badge-red { background: #b91c1c; color: white; }
+        #map-container { flex: 1; display: flex; justify-content: center; align-items: center; background: #0b0e11; }
+        canvas { border: 2px solid #374151; box-shadow: 0 0 25px rgba(0,0,0,0.8); cursor: pointer; }
     </style>
 </head>
 <body>
 
-    <!-- Upper Control Bar -->
+    <!-- Меню Входа / Лобби -->
+    <div id="lobby-screen">
+        <div class="lobby-card">
+            <h2>HEARTS OF PIXELS</h2>
+            <div class="input-group">
+                <label>Ваш Никнейм:</label>
+                <input type="text" id="player-nickname" value="Командир" maxlength="12">
+            </div>
+            <div class="input-group">
+                <label>Выбор Фракции:</label>
+                <select id="faction-select">
+                    <option value="1">Синий Альянс</option>
+                    <option value="2">Красный Пакт</option>
+                </select>
+            </div>
+            <hr style="border-color:#374151;">
+            <button class="btn btn-green" onclick="hostGame()">Создать сервер (Хост)</button>
+            <div class="input-group">
+                <input type="text" id="join-id-input" placeholder="Введите ID хоста...">
+                <button class="btn" onclick="joinGame()">Подключиться по ID</button>
+            </div>
+            <div id="status-msg" style="font-size:11px; color:#f59e0b; text-align:center;"></div>
+        </div>
+    </div>
+
+    <!-- Верхняя Панель -->
     <div id="topbar">
         <div class="stats">
-            <div class="stat-item"><span style="color:#f59e0b">⚡ ПП:</span> 45/50</div>
-            <div class="stat-item"><span style="color:#60a5fa">🛢️ Нефть:</span> 1.2k</div>
-            <div class="stat-item"><span style="color:#ef4444">⚔️ Людские ресурсы:</span> 850k</div>
+            <div class="stat-item"><span style="color:#f59e0b">⚡ ПП:</span> <span id="res-ic">50</span></div>
+            <div class="stat-item"><span style="color:#60a5fa">🛢️ Нефть:</span> <span id="res-oil">100</span></div>
         </div>
-        <div id="current-turn-text">Ход: <span class="badge badge-blue">Синий Альянс</span></div>
-        <button class="btn-turn" onclick="endTurn()">ПРИКАЗ: ЗАВЕРШИТЬ ХОД</button>
+        <div id="connection-status" style="color: #10b981;">Режим: Одиночный / Ожидание</div>
     </div>
 
     <div id="main-container">
-        <!-- Sidebar -->
+        <!-- Боковая Панель -->
         <div id="sidebar">
             <div class="panel-box">
-                <div class="panel-title">Штаб Командования</div>
-                <div id="country-info" style="font-size: 14px; font-weight: bold; color: #60a5fa;">Синий Альянс</div>
+                <div class="panel-title">Штаб</div>
+                <div id="player-info" style="font-size: 13px; font-weight: bold; color: #60a5fa;">-</div>
             </div>
 
             <div class="panel-box">
-                <div class="panel-title">Информация о дивизии</div>
-                <div id="unit-info" style="font-size: 12px; color: #9ca3af;">
-                    Выберите дивизию на карте для отдачи приказов.
-                </div>
+                <div class="panel-title">Дивизия</div>
+                <div id="unit-info" style="font-size: 12px; color: #9ca3af;">Выберите unit для отдачи приказа.</div>
             </div>
 
+            <button class="btn btn-green" style="font-size:12px;" onclick="spawnUnit()">Нанять дивизию (30 ПП)</button>
+
             <div class="panel-box" style="margin-top: auto;">
-                <div class="panel-title">Мини-карта</div>
-                <div style="width: 100%; height: 100px; background: #050709; border: 1px dashed #374151; display:flex; align-items:center; justify-content:center; color:#4b5563; font-size:10px;">
-                    [ФРОНТ АКТИВЕН]
-                </div>
+                <div class="panel-title">ID вашей комнаты:</div>
+                <input type="text" id="my-peer-id" readonly style="width:100%; background:#000; color:#10b981; border:none; padding:4px; font-size:11px;">
             </div>
         </div>
 
-        <!-- Canvas Map -->
+        <!-- Поле Карты -->
         <div id="map-container">
             <canvas id="gameCanvas" width="600" height="600"></canvas>
         </div>
@@ -141,15 +157,20 @@
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
-
         const GRID_SIZE = 10;
         const TILE_SIZE = canvas.width / GRID_SIZE;
 
-        let currentPlayer = 1; // 1: Blue, 2: Red
+        // Данные игрока
+        let myPlayer = { id: 1, name: "Player", faction: 1 };
+        let resources = { ic: 50, oil: 100 };
         let selectedUnit = null;
 
-        // Владение провинциями (0: нейтрал, 1: Синие, 2: Красные)
-        const provinceOwners = [
+        // Сеть
+        let peer = null;
+        let conn = null;
+
+        // Состояние карты
+        let provinceOwners = [
             [1, 1, 1, 1, 0, 0, 2, 2, 2, 2],
             [1, 1, 1, 1, 0, 0, 2, 2, 2, 2],
             [1, 1, 1, 0, 0, 0, 0, 2, 2, 2],
@@ -162,60 +183,110 @@
             [2, 2, 2, 2, 0, 0, 1, 1, 1, 1]
         ];
 
-        // Дивизии
-        const units = [
-            { id: 1, player: 1, x: 1, y: 1, name: "1-я Пехотная Дивизия", icon: "⚔️", selected: false },
-            { id: 2, player: 1, x: 2, y: 3, name: "2-я Танковая Дивизия", icon: "🛡️", selected: false },
-            { id: 3, player: 2, x: 8, y: 8, name: "7-я Моторизованная", icon: "⚔️", selected: false },
-            { id: 4, player: 2, x: 7, y: 6, name: "Гвардейская Танковая", icon: "🛡️", selected: false }
+        let units = [
+            { id: 1, player: 1, x: 1, y: 1, name: "1-я Пехотная", icon: "⚔️", hp: 100 },
+            { id: 2, player: 2, x: 8, y: 8, name: "7-я Танковая", icon: "🛡️", hp: 100 }
         ];
 
+        // Инициализация PeerJS
+        function initPeer() {
+            peer = new Peer();
+            peer.on('open', (id) => {
+                document.getElementById('my-peer-id').value = id;
+            });
+
+            peer.on('connection', (c) => {
+                conn = c;
+                setupConnection();
+            });
+        }
+
+        function hostGame() {
+            readLobbyInputs();
+            document.getElementById('lobby-screen').style.display = 'none';
+            initPeer();
+            updateUI();
+        }
+
+        function joinGame() {
+            readLobbyInputs();
+            const joinId = document.getElementById('join-id-input').value;
+            if(!joinId) return alert("Введите ID сервера!");
+
+            initPeer();
+            peer.on('open', () => {
+                conn = peer.connect(joinId);
+                setupConnection();
+            });
+
+            document.getElementById('lobby-screen').style.display = 'none';
+            updateUI();
+        }
+
+        function readLobbyInputs() {
+            myPlayer.name = document.getElementById('player-nickname').value || "Командир";
+            myPlayer.faction = parseInt(document.getElementById('faction-select').value);
+        }
+
+        function setupConnection() {
+            document.getElementById('connection-status').innerText = "Статус: ПОДКЛЮЧЕНО (Real-Time)";
+            conn.on('data', (data) => {
+                // Синхронизация сетевых пакетов
+                if(data.type === 'SYNC') {
+                    units = data.units;
+                    provinceOwners = data.provinceOwners;
+                    drawMap();
+                }
+            });
+            sendSync();
+        }
+
+        function sendSync() {
+            if(conn && conn.open) {
+                conn.send({ type: 'SYNC', units: units, provinceOwners: provinceOwners });
+            }
+        }
+
+        // Отрисовка
         function drawMap() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // 1. Отрисовка провинций и границ
+            // Карты и провинции
             for (let r = 0; r < GRID_SIZE; r++) {
                 for (let c = 0; c < GRID_SIZE; c++) {
                     const owner = provinceOwners[r][c];
-                    
-                    // Цвет территории (Политическая карта)
-                    if (owner === 1) ctx.fillStyle = '#1e3a8a';      // Синяя страна
-                    else if (owner === 2) ctx.fillStyle = '#881337'; // Красная страна
-                    else ctx.fillStyle = '#374151';                  // Нейтралы/Ничья земля
+                    if (owner === 1) ctx.fillStyle = '#1e3a8a';
+                    else if (owner === 2) ctx.fillStyle = '#881337';
+                    else ctx.fillStyle = '#27272a';
 
                     ctx.fillRect(c * TILE_SIZE, r * TILE_SIZE, TILE_SIZE, TILE_SIZE);
-
-                    // Граница провинций
-                    ctx.strokeStyle = '#1f2937';
-                    ctx.lineWidth = 1;
+                    ctx.strokeStyle = '#18181b';
                     ctx.strokeRect(c * TILE_SIZE, r * TILE_SIZE, TILE_SIZE, TILE_SIZE);
                 }
             }
 
-            // 2. Отрисовка дивизий (Военные прямоугольные значки HoI4)
+            // Дивизии
             units.forEach(u => {
                 const x = u.x * TILE_SIZE + 5;
-                const y = u.y * TILE_SIZE + 12;
+                const y = u.y * TILE_SIZE + 10;
                 const w = TILE_SIZE - 10;
-                const h = TILE_SIZE - 24;
+                const h = TILE_SIZE - 20;
 
-                // Плашка дивизии
                 ctx.fillStyle = u.player === 1 ? '#2563eb' : '#dc2626';
                 ctx.fillRect(x, y, w, h);
 
-                // Опознавательная рамка
-                ctx.strokeStyle = u.selected ? '#fbbf24' : '#ffffff';
-                ctx.lineWidth = u.selected ? 3 : 1;
+                ctx.strokeStyle = (selectedUnit && selectedUnit.id === u.id) ? '#fbbf24' : '#ffffff';
+                ctx.lineWidth = (selectedUnit && selectedUnit.id === u.id) ? 3 : 1;
                 ctx.strokeRect(x, y, w, h);
 
-                // Иконка типа войск
                 ctx.fillStyle = '#ffffff';
-                ctx.font = '14px sans-serif';
+                ctx.font = '12px sans-serif';
                 ctx.textAlign = 'center';
-                ctx.fillText(u.icon, x + w / 2, y + h / 2 + 5);
+                ctx.fillText(`${u.icon} ${u.hp}%`, x + w / 2, y + h / 2 + 4);
             });
         }
 
+        // Управление кликами
         canvas.addEventListener('click', (e) => {
             const rect = canvas.getBoundingClientRect();
             const clickX = Math.floor((e.clientX - rect.left) / TILE_SIZE);
@@ -223,66 +294,72 @@
 
             const clickedUnit = units.find(u => u.x === clickX && u.y === clickY);
 
-            // Выбор своей дивизии
-            if (clickedUnit && clickedUnit.player === currentPlayer) {
-                if (selectedUnit) selectedUnit.selected = false;
+            if (clickedUnit && clickedUnit.player === myPlayer.faction) {
                 selectedUnit = clickedUnit;
-                selectedUnit.selected = true;
-
-                document.getElementById('unit-info').innerHTML = `
-                    <b>${uName(selectedUnit)}</b><br>
-                    Тип: ${selectedUnit.icon === "🛡️" ? "Бронетанковые" : "Пехота"}<br>
-                    Организация: <span style="color:#10b981">100%</span><br>
-                    Атака / Оборона: 12 / 18
-                `;
-            } 
-            // Приказ на перемещение / захват провинции
-            else if (selectedUnit) {
+                document.getElementById('unit-info').innerHTML = `<b>${selectedUnit.name}</b><br>HP: ${selectedUnit.hp}%`;
+            } else if (selectedUnit) {
                 const dx = Math.abs(selectedUnit.x - clickX);
                 const dy = Math.abs(selectedUnit.y - clickY);
 
-                // Шаг на 1 клетку в любом направлении
                 if (dx <= 1 && dy <= 1 && !(dx === 0 && dy === 0)) {
-                    selectedUnit.x = clickX;
-                    selectedUnit.y = clickY;
+                    const enemy = units.find(u => u.x === clickX && u.y === clickY && u.player !== myPlayer.faction);
                     
-                    // Захват территории (Окрашивание провинции)
-                    provinceOwners[clickY][clickX] = currentPlayer;
+                    if (enemy) {
+                        // Механика боя
+                        enemy.hp -= 35;
+                        selectedUnit.hp -= 15;
+                        if (enemy.hp <= 0) units = units.filter(u => u.id !== enemy.id);
+                        if (selectedUnit.hp <= 0) units = units.filter(u => u.id !== selectedUnit.id);
+                    } else {
+                        // Перемещение и захват
+                        selectedUnit.x = clickX;
+                        selectedUnit.y = clickY;
+                        provinceOwners[clickY][clickX] = myPlayer.faction;
+                    }
 
-                    selectedUnit.selected = false;
                     selectedUnit = null;
-                    document.getElementById('unit-info').innerText = "Выберите дивизию на карте для отдачи приказов.";
+                    sendSync();
                 }
             }
             drawMap();
         });
 
-        function uName(unit) {
-            return unit.name;
+        // Наём дивизий
+        function spawnUnit() {
+            if (resources.ic >= 30) {
+                resources.ic -= 30;
+                const startX = myPlayer.faction === 1 ? 0 : 9;
+                const startY = myPlayer.faction === 1 ? 0 : 9;
+                
+                units.push({
+                    id: Date.now(),
+                    player: myPlayer.faction,
+                    x: startX,
+                    y: startY,
+                    name: "Новая Дивизия",
+                    icon: "⚔️",
+                    hp: 100
+                });
+
+                sendSync();
+                drawMap();
+                updateUI();
+            }
         }
 
-        function endTurn() {
-            if (selectedUnit) {
-                selectedUnit.selected = false;
-                selectedUnit = null;
-            }
-            currentPlayer = currentPlayer === 1 ? 2 : 1;
-
-            const turnDisplay = document.getElementById('current-turn-text');
-            const countryInfo = document.getElementById('country-info');
-
-            if (currentPlayer === 1) {
-                turnDisplay.innerHTML = 'Ход: <span class="badge badge-blue">Синий Альянс</span>';
-                countryInfo.innerText = "Синий Альянс";
-                countryInfo.style.color = "#60a5fa";
-            } else {
-                turnDisplay.innerHTML = 'Ход: <span class="badge badge-red">Красный Пакт</span>';
-                countryInfo.innerText = "Красный Пакт";
-                countryInfo.style.color = "#f87171";
-            }
-            document.getElementById('unit-info').innerText = "Выберите дивизию на карте для отдачи приказов.";
-            drawMap();
+        function updateUI() {
+            document.getElementById('player-info').innerText = `${myPlayer.name} (${myPlayer.faction === 1 ? 'Синий Альянс' : 'Красный Пакт'})`;
+            document.getElementById('player-info').style.color = myPlayer.faction === 1 ? '#60a5fa' : '#f87171';
+            document.getElementById('res-ic').innerText = resources.ic;
+            document.getElementById('res-oil').innerText = resources.oil;
         }
+
+        // Авто-прирост ресурсов (Real-Time элемент)
+        setInterval(() => {
+            resources.ic += 2;
+            resources.oil += 1;
+            updateUI();
+        }, 3000);
 
         drawMap();
     </script>
