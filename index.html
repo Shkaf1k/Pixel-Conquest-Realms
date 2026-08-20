@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pixel Conquest: Realms</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #1a1a1a;
+            color: #fff;
+            font-family: sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+        #ui {
+            margin-bottom: 10px;
+            font-size: 18px;
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+        button {
+            padding: 8px 16px;
+            background: #4CAF50;
+            border: none;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        button:hover { background: #45a049; }
+        canvas {
+            border: 3px solid #444;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            background-color: #2b2b2b;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="ui">
+        <div>Ход: <span id="turn-display" style="color: #4da6ff; font-weight: bold;">Игрок 1 (Синий)</span></div>
+        <button onclick="endTurn()">Завершить ход</button>
+    </div>
+
+    <canvas id="gameCanvas" width="600" height="600"></canvas>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        const GRID_SIZE = 10;
+        const TILE_SIZE = canvas.width / GRID_SIZE;
+
+        let currentPlayer = 1; // 1: Синий, 2: Красный
+        let selectedUnit = null;
+
+        // Юниты игроков
+        const units = [
+            { id: 1, player: 1, x: 1, y: 1, color: '#0066ff', selected: false },
+            { id: 2, player: 2, x: 8, y: 8, color: '#ff3333', selected: false }
+        ];
+
+        function drawBoard() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Отрисовка сетки
+            for (let row = 0; row < GRID_SIZE; row++) {
+                for (let col = 0; col < GRID_SIZE; col++) {
+                    ctx.strokeStyle = '#3a3a3a';
+                    ctx.strokeRect(col * TILE_SIZE, row * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+                    
+                    // Цвет плитки (трава)
+                    ctx.fillStyle = (row + col) % 2 === 0 ? '#32522b' : '#2b4724';
+                    ctx.fillRect(col * TILE_SIZE + 1, row * TILE_SIZE + 1, TILE_SIZE - 2, TILE_SIZE - 2);
+                }
+            }
+
+            // Отрисовка юнитов
+            units.forEach(unit => {
+                ctx.beginPath();
+                ctx.arc(
+                    unit.x * TILE_SIZE + TILE_SIZE / 2,
+                    unit.y * TILE_SIZE + TILE_SIZE / 2,
+                    TILE_SIZE / 3,
+                    0,
+                    Math.PI * 2
+                );
+                ctx.fillStyle = unit.color;
+                ctx.fill();
+
+                if (unit.selected) {
+                    ctx.lineWidth = 3;
+                    ctx.strokeStyle = '#ffff00';
+                    ctx.stroke();
+                }
+            });
+        }
+
+        canvas.addEventListener('click', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const clickX = Math.floor((e.clientX - rect.left) / TILE_SIZE);
+            const clickY = Math.floor((e.clientY - rect.top) / TILE_SIZE);
+
+            // Клик по своему юниту
+            const clickedUnit = units.find(u => u.x === clickX && u.y === clickY);
+
+            if (clickedUnit && clickedUnit.player === currentPlayer) {
+                if (selectedUnit) selectedUnit.selected = false;
+                selectedUnit = clickedUnit;
+                selectedUnit.selected = true;
+            } 
+            // Перемещение выбранного юнита
+            else if (selectedUnit) {
+                // Простая проверка расстояния (ход на 1 клетку)
+                const dx = Math.abs(selectedUnit.x - clickX);
+                const dy = Math.abs(selectedUnit.y - clickY);
+
+                if (dx <= 1 && dy <= 1 && !(dx === 0 && dy === 0)) {
+                    selectedUnit.x = clickX;
+                    selectedUnit.y = clickY;
+                    selectedUnit.selected = false;
+                    selectedUnit = null;
+                }
+            }
+            drawBoard();
+        });
+
+        function endTurn() {
+            if (selectedUnit) {
+                selectedUnit.selected = false;
+                selectedUnit = null;
+            }
+            currentPlayer = currentPlayer === 1 ? 2 : 1;
+            
+            const turnText = document.getElementById('turn-display');
+            if (currentPlayer === 1) {
+                turnText.innerText = 'Игрок 1 (Синий)';
+                turnText.style.color = '#4da6ff';
+            } else {
+                turnText.innerText = 'Игрок 2 (Красный)';
+                turnText.style.color = '#ff6666';
+            }
+            drawBoard();
+        }
+
+        drawBoard();
+    </script>
+</body>
+</html>
