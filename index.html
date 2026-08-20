@@ -3,52 +3,140 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pixel Conquest: Realms</title>
+    <title>Hearts of Pixels - HoI4 Style</title>
     <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
         body {
-            margin: 0;
-            padding: 0;
-            background-color: #1a1a1a;
-            color: #fff;
-            font-family: sans-serif;
+            background-color: #121619;
+            color: #d1d5db;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             display: flex;
             flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
+            height: 100vh;
+            overflow: hidden;
         }
-        #ui {
-            margin-bottom: 10px;
-            font-size: 18px;
+
+        /* Topbar (верхняя панель HoI4) */
+        #topbar {
+            height: 40px;
+            background: linear-gradient(180deg, #2a323d 0%, #1a2027 100%);
+            border-bottom: 2px solid #4a5568;
             display: flex;
-            gap: 20px;
             align-items: center;
-        }
-        button {
-            padding: 8px 16px;
-            background: #4CAF50;
-            border: none;
-            color: white;
+            justify-content: space-between;
+            padding: 0 15px;
+            font-size: 13px;
             font-weight: bold;
-            cursor: pointer;
+        }
+        .stats { display: flex; gap: 15px; }
+        .stat-item { display: flex; align-items: center; gap: 5px; background: #0f1318; padding: 4px 8px; border-radius: 3px; border: 1px solid #374151; }
+
+        /* Основной контейнер */
+        #main-container {
+            display: flex;
+            flex: 1;
+            position: relative;
+        }
+
+        /* Sidebar (Левая панель генерала/дивизии) */
+        #sidebar {
+            width: 250px;
+            background: #181f26;
+            border-right: 2px solid #374151;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        .panel-box {
+            background: #0f1318;
+            border: 1px solid #374151;
+            padding: 10px;
             border-radius: 4px;
         }
-        button:hover { background: #45a049; }
-        canvas {
-            border: 3px solid #444;
-            box-shadow: 0 0 20px rgba(0,0,0,0.5);
-            background-color: #2b2b2b;
+        .panel-title { color: #f59e0b; font-size: 12px; text-transform: uppercase; margin-bottom: 5px; }
+
+        /* Карта */
+        #map-container {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #0b0e11;
+            position: relative;
         }
+        canvas {
+            border: 2px solid #374151;
+            box-shadow: 0 0 25px rgba(0,0,0,0.8);
+            cursor: pointer;
+        }
+
+        /* Кнопка хода */
+        .btn-turn {
+            background: linear-gradient(180deg, #059669 0%, #047857 100%);
+            border: 1px solid #10b981;
+            color: white;
+            padding: 8px 16px;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 3px;
+            text-shadow: 1px 1px 2px #000;
+        }
+        .btn-turn:hover { background: #10b981; }
+
+        /* Иконки дивизий */
+        .badge {
+            display: inline-block;
+            padding: 2px 6px;
+            font-size: 10px;
+            border-radius: 2px;
+            font-weight: bold;
+        }
+        .badge-blue { background: #1d4ed8; color: white; }
+        .badge-red { background: #b91c1c; color: white; }
     </style>
 </head>
 <body>
 
-    <div id="ui">
-        <div>Ход: <span id="turn-display" style="color: #4da6ff; font-weight: bold;">Игрок 1 (Синий)</span></div>
-        <button onclick="endTurn()">Завершить ход</button>
+    <!-- Upper Control Bar -->
+    <div id="topbar">
+        <div class="stats">
+            <div class="stat-item"><span style="color:#f59e0b">⚡ ПП:</span> 45/50</div>
+            <div class="stat-item"><span style="color:#60a5fa">🛢️ Нефть:</span> 1.2k</div>
+            <div class="stat-item"><span style="color:#ef4444">⚔️ Людские ресурсы:</span> 850k</div>
+        </div>
+        <div id="current-turn-text">Ход: <span class="badge badge-blue">Синий Альянс</span></div>
+        <button class="btn-turn" onclick="endTurn()">ПРИКАЗ: ЗАВЕРШИТЬ ХОД</button>
     </div>
 
-    <canvas id="gameCanvas" width="600" height="600"></canvas>
+    <div id="main-container">
+        <!-- Sidebar -->
+        <div id="sidebar">
+            <div class="panel-box">
+                <div class="panel-title">Штаб Командования</div>
+                <div id="country-info" style="font-size: 14px; font-weight: bold; color: #60a5fa;">Синий Альянс</div>
+            </div>
+
+            <div class="panel-box">
+                <div class="panel-title">Информация о дивизии</div>
+                <div id="unit-info" style="font-size: 12px; color: #9ca3af;">
+                    Выберите дивизию на карте для отдачи приказов.
+                </div>
+            </div>
+
+            <div class="panel-box" style="margin-top: auto;">
+                <div class="panel-title">Мини-карта</div>
+                <div style="width: 100%; height: 100px; background: #050709; border: 1px dashed #374151; display:flex; align-items:center; justify-content:center; color:#4b5563; font-size:10px;">
+                    [ФРОНТ АКТИВЕН]
+                </div>
+            </div>
+        </div>
+
+        <!-- Canvas Map -->
+        <div id="map-container">
+            <canvas id="gameCanvas" width="600" height="600"></canvas>
+        </div>
+    </div>
 
     <script>
         const canvas = document.getElementById('gameCanvas');
@@ -57,48 +145,74 @@
         const GRID_SIZE = 10;
         const TILE_SIZE = canvas.width / GRID_SIZE;
 
-        let currentPlayer = 1; // 1: Синий, 2: Красный
+        let currentPlayer = 1; // 1: Blue, 2: Red
         let selectedUnit = null;
 
-        // Юниты игроков
-        const units = [
-            { id: 1, player: 1, x: 1, y: 1, color: '#0066ff', selected: false },
-            { id: 2, player: 2, x: 8, y: 8, color: '#ff3333', selected: false }
+        // Владение провинциями (0: нейтрал, 1: Синие, 2: Красные)
+        const provinceOwners = [
+            [1, 1, 1, 1, 0, 0, 2, 2, 2, 2],
+            [1, 1, 1, 1, 0, 0, 2, 2, 2, 2],
+            [1, 1, 1, 0, 0, 0, 0, 2, 2, 2],
+            [1, 1, 0, 0, 0, 0, 0, 0, 2, 2],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [2, 2, 0, 0, 0, 0, 0, 0, 1, 1],
+            [2, 2, 2, 0, 0, 0, 0, 1, 1, 1],
+            [2, 2, 2, 2, 0, 0, 1, 1, 1, 1],
+            [2, 2, 2, 2, 0, 0, 1, 1, 1, 1]
         ];
 
-        function drawBoard() {
+        // Дивизии
+        const units = [
+            { id: 1, player: 1, x: 1, y: 1, name: "1-я Пехотная Дивизия", icon: "⚔️", selected: false },
+            { id: 2, player: 1, x: 2, y: 3, name: "2-я Танковая Дивизия", icon: "🛡️", selected: false },
+            { id: 3, player: 2, x: 8, y: 8, name: "7-я Моторизованная", icon: "⚔️", selected: false },
+            { id: 4, player: 2, x: 7, y: 6, name: "Гвардейская Танковая", icon: "🛡️", selected: false }
+        ];
+
+        function drawMap() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // Отрисовка сетки
-            for (let row = 0; row < GRID_SIZE; row++) {
-                for (let col = 0; col < GRID_SIZE; col++) {
-                    ctx.strokeStyle = '#3a3a3a';
-                    ctx.strokeRect(col * TILE_SIZE, row * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+            // 1. Отрисовка провинций и границ
+            for (let r = 0; r < GRID_SIZE; r++) {
+                for (let c = 0; c < GRID_SIZE; c++) {
+                    const owner = provinceOwners[r][c];
                     
-                    // Цвет плитки (трава)
-                    ctx.fillStyle = (row + col) % 2 === 0 ? '#32522b' : '#2b4724';
-                    ctx.fillRect(col * TILE_SIZE + 1, row * TILE_SIZE + 1, TILE_SIZE - 2, TILE_SIZE - 2);
+                    // Цвет территории (Политическая карта)
+                    if (owner === 1) ctx.fillStyle = '#1e3a8a';      // Синяя страна
+                    else if (owner === 2) ctx.fillStyle = '#881337'; // Красная страна
+                    else ctx.fillStyle = '#374151';                  // Нейтралы/Ничья земля
+
+                    ctx.fillRect(c * TILE_SIZE, r * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+
+                    // Граница провинций
+                    ctx.strokeStyle = '#1f2937';
+                    ctx.lineWidth = 1;
+                    ctx.strokeRect(c * TILE_SIZE, r * TILE_SIZE, TILE_SIZE, TILE_SIZE);
                 }
             }
 
-            // Отрисовка юнитов
-            units.forEach(unit => {
-                ctx.beginPath();
-                ctx.arc(
-                    unit.x * TILE_SIZE + TILE_SIZE / 2,
-                    unit.y * TILE_SIZE + TILE_SIZE / 2,
-                    TILE_SIZE / 3,
-                    0,
-                    Math.PI * 2
-                );
-                ctx.fillStyle = unit.color;
-                ctx.fill();
+            // 2. Отрисовка дивизий (Военные прямоугольные значки HoI4)
+            units.forEach(u => {
+                const x = u.x * TILE_SIZE + 5;
+                const y = u.y * TILE_SIZE + 12;
+                const w = TILE_SIZE - 10;
+                const h = TILE_SIZE - 24;
 
-                if (unit.selected) {
-                    ctx.lineWidth = 3;
-                    ctx.strokeStyle = '#ffff00';
-                    ctx.stroke();
-                }
+                // Плашка дивизии
+                ctx.fillStyle = u.player === 1 ? '#2563eb' : '#dc2626';
+                ctx.fillRect(x, y, w, h);
+
+                // Опознавательная рамка
+                ctx.strokeStyle = u.selected ? '#fbbf24' : '#ffffff';
+                ctx.lineWidth = u.selected ? 3 : 1;
+                ctx.strokeRect(x, y, w, h);
+
+                // Иконка типа войск
+                ctx.fillStyle = '#ffffff';
+                ctx.font = '14px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(u.icon, x + w / 2, y + h / 2 + 5);
             });
         }
 
@@ -107,29 +221,45 @@
             const clickX = Math.floor((e.clientX - rect.left) / TILE_SIZE);
             const clickY = Math.floor((e.clientY - rect.top) / TILE_SIZE);
 
-            // Клик по своему юниту
             const clickedUnit = units.find(u => u.x === clickX && u.y === clickY);
 
+            // Выбор своей дивизии
             if (clickedUnit && clickedUnit.player === currentPlayer) {
                 if (selectedUnit) selectedUnit.selected = false;
                 selectedUnit = clickedUnit;
                 selectedUnit.selected = true;
+
+                document.getElementById('unit-info').innerHTML = `
+                    <b>${uName(selectedUnit)}</b><br>
+                    Тип: ${selectedUnit.icon === "🛡️" ? "Бронетанковые" : "Пехота"}<br>
+                    Организация: <span style="color:#10b981">100%</span><br>
+                    Атака / Оборона: 12 / 18
+                `;
             } 
-            // Перемещение выбранного юнита
+            // Приказ на перемещение / захват провинции
             else if (selectedUnit) {
-                // Простая проверка расстояния (ход на 1 клетку)
                 const dx = Math.abs(selectedUnit.x - clickX);
                 const dy = Math.abs(selectedUnit.y - clickY);
 
+                // Шаг на 1 клетку в любом направлении
                 if (dx <= 1 && dy <= 1 && !(dx === 0 && dy === 0)) {
                     selectedUnit.x = clickX;
                     selectedUnit.y = clickY;
+                    
+                    // Захват территории (Окрашивание провинции)
+                    provinceOwners[clickY][clickX] = currentPlayer;
+
                     selectedUnit.selected = false;
                     selectedUnit = null;
+                    document.getElementById('unit-info').innerText = "Выберите дивизию на карте для отдачи приказов.";
                 }
             }
-            drawBoard();
+            drawMap();
         });
+
+        function uName(unit) {
+            return unit.name;
+        }
 
         function endTurn() {
             if (selectedUnit) {
@@ -137,19 +267,24 @@
                 selectedUnit = null;
             }
             currentPlayer = currentPlayer === 1 ? 2 : 1;
-            
-            const turnText = document.getElementById('turn-display');
+
+            const turnDisplay = document.getElementById('current-turn-text');
+            const countryInfo = document.getElementById('country-info');
+
             if (currentPlayer === 1) {
-                turnText.innerText = 'Игрок 1 (Синий)';
-                turnText.style.color = '#4da6ff';
+                turnDisplay.innerHTML = 'Ход: <span class="badge badge-blue">Синий Альянс</span>';
+                countryInfo.innerText = "Синий Альянс";
+                countryInfo.style.color = "#60a5fa";
             } else {
-                turnText.innerText = 'Игрок 2 (Красный)';
-                turnText.style.color = '#ff6666';
+                turnDisplay.innerHTML = 'Ход: <span class="badge badge-red">Красный Пакт</span>';
+                countryInfo.innerText = "Красный Пакт";
+                countryInfo.style.color = "#f87171";
             }
-            drawBoard();
+            document.getElementById('unit-info').innerText = "Выберите дивизию на карте для отдачи приказов.";
+            drawMap();
         }
 
-        drawBoard();
+        drawMap();
     </script>
 </body>
 </html>
